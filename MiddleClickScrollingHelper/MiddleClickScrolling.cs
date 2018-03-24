@@ -13,16 +13,16 @@ namespace MiddleClickScrollingHelper
 {
     public class MiddleClickScrolling
     {
-        private static bool isPressed = false;
-        private static bool isMoved = false;
-        private static Point? startPosition = null;
-        private static bool isDeferredMovingStarted = false;
-        private static double slowdown = 5;
-        private static Point? currentPosition = null;
-        private static Timer timer;
-        private static ScrollViewer scrollViewer;
-
-        // Using a DependencyProperty as the backing store for EnableMiddleClickScrolling.  This enables animation, styling, binding, etc...
+        private static bool _isPressed = false;
+        private static bool _isMoved = false;
+        private static Point? _startPosition = null;
+        private static bool _isDeferredMovingStarted = false;
+        private static double _slowdown = 4;
+        private static Point? _currentPosition = null;
+        private static Timer _timer;
+        private static ScrollViewer _scrollViewer;
+        private static uint _oldCursorID = 100;
+        
         public static readonly DependencyProperty EnableMiddleClickScrollingProperty =
             DependencyProperty.RegisterAttached("EnableMiddleClickScrolling", typeof(bool), typeof(MiddleClickScrolling), new PropertyMetadata(false, OnEnableMiddleClickScrollingChanged));
 
@@ -38,65 +38,62 @@ namespace MiddleClickScrollingHelper
 
         private static void OnEnableMiddleClickScrollingChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            scrollViewer = d as ScrollViewer;
+            _scrollViewer = d as ScrollViewer;
 
-            if (scrollViewer == null)
+            if (_scrollViewer == null)
             {
                 return;
             }
 
             if ((bool)e.NewValue)
             {
-                scrollViewer.PointerPressed -= ScrollViewer_PointerPressed;
-                scrollViewer.PointerPressed += ScrollViewer_PointerPressed;
+                _scrollViewer.PointerPressed -= ScrollViewer_PointerPressed;
+                _scrollViewer.PointerPressed += ScrollViewer_PointerPressed;
             }
             else
             {
-                scrollViewer.PointerPressed -= ScrollViewer_PointerPressed;
+                _scrollViewer.PointerPressed -= ScrollViewer_PointerPressed;
                 UnsubscribeMiddleClickScrolling();
             }
         }
 
         private static void SubscribeMiddleClickScrolling()
         {
-            isPressed = true;
-            isMoved = false;
-            isDeferredMovingStarted = false;
-            timer = new Timer(ScrollAsync, null, 50, 50);
-            
-            scrollViewer.PointerMoved -= ScrollViewer_PointerMoved;
-            scrollViewer.PointerReleased -= ScrollViewer_PointerReleased;
-            
-            scrollViewer.PointerMoved += ScrollViewer_PointerMoved;
-            scrollViewer.PointerReleased += ScrollViewer_PointerReleased;
+            _isPressed = true;
+            _isMoved = false;
+            _isDeferredMovingStarted = false;
+            _timer = new Timer(ScrollAsync, null, 50, 50);
+
+            Window.Current.CoreWindow.PointerMoved -= CoreWindow_PointerMoved;
+            Window.Current.CoreWindow.PointerReleased -= CoreWindow_PointerReleased;
+
+            Window.Current.CoreWindow.PointerMoved += CoreWindow_PointerMoved;
+            Window.Current.CoreWindow.PointerReleased += CoreWindow_PointerReleased;
         }
 
         private static void UnsubscribeMiddleClickScrolling()
         {
-            isPressed = false;
-            isMoved = false;
-            startPosition = null;
-            currentPosition = null;
-            isDeferredMovingStarted = false;
+            _isPressed = false;
+            _isMoved = false;
+            _startPosition = null;
+            _currentPosition = null;
+            _isDeferredMovingStarted = false;
 
-            timer.Dispose();
-            
-            scrollViewer.PointerMoved -= ScrollViewer_PointerMoved;
-            scrollViewer.PointerReleased -= ScrollViewer_PointerReleased;
+            _timer.Dispose();
+
+            Window.Current.CoreWindow.PointerMoved -= CoreWindow_PointerMoved;
+            Window.Current.CoreWindow.PointerReleased -= CoreWindow_PointerReleased;
 
             Window.Current.CoreWindow.PointerCursor = new CoreCursor(CoreCursorType.Arrow, 0);
         }
 
         private static async void ScrollAsync(object state)
         {
-            Debug.WriteLine("Can Scroll - " + CanScroll());
 
             if (CanScroll())
             {
-                var offsetX = currentPosition.Value.X - startPosition.Value.X;
-                var offsetY = currentPosition.Value.Y - startPosition.Value.Y;
-
-                Debug.WriteLine(offsetX + " - " + offsetY);
+                var offsetX = _currentPosition.Value.X - _startPosition.Value.X;
+                var offsetY = _currentPosition.Value.Y - _startPosition.Value.Y;
 
                 SetCursorType(offsetX, offsetY);
 
@@ -105,12 +102,12 @@ namespace MiddleClickScrollingHelper
                     offsetX = Math.Abs(offsetX) < 75.0 ? 0 : offsetX;
                     offsetY = Math.Abs(offsetY) < 75.0 ? 0 : offsetY;
 
-                    offsetX /= slowdown;
-                    offsetY /= slowdown;
+                    offsetX /= _slowdown;
+                    offsetY /= _slowdown;
 
                     await Windows.ApplicationModel.Core.CoreApplication.MainView.CoreWindow.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
                     {
-                        scrollViewer.ChangeView(scrollViewer.HorizontalOffset + offsetX, scrollViewer.VerticalOffset + offsetY, null);
+                        _scrollViewer.ChangeView(_scrollViewer.HorizontalOffset + offsetX, _scrollViewer.VerticalOffset + offsetY, null);
                     });
                 }
             }
@@ -118,13 +115,12 @@ namespace MiddleClickScrollingHelper
 
         private static bool CanScroll()
         {
-            Debug.WriteLine("isPressed - " + isPressed + " - isDeferredMovingStarted - " + isDeferredMovingStarted);
-            return isDeferredMovingStarted || (isPressed && !isDeferredMovingStarted);
+            return _isDeferredMovingStarted || (_isPressed && !_isDeferredMovingStarted);
         }
 
         private static void ScrollViewer_PointerPressed(object sender, PointerRoutedEventArgs e)
         {
-            if (isDeferredMovingStarted)
+            if (_isDeferredMovingStarted)
             {
                 UnsubscribeMiddleClickScrolling();
                 return;
@@ -134,58 +130,65 @@ namespace MiddleClickScrollingHelper
 
             if (pointer.PointerDeviceType == PointerDeviceType.Mouse)
             {
-                PointerPoint pointerPoint = e.GetCurrentPoint(scrollViewer);
+                PointerPoint pointerPoint = e.GetCurrentPoint(_scrollViewer);
 
                 if (pointerPoint.Properties.IsMiddleButtonPressed)
                 {
-                    startPosition = pointerPoint.Position;
-                    currentPosition = pointerPoint.Position;
+                    _startPosition = Window.Current.CoreWindow.PointerPosition;
+                    _currentPosition = Window.Current.CoreWindow.PointerPosition;
+
+                    Debug.WriteLine("startPosition - " + _startPosition);
+
                     SubscribeMiddleClickScrolling();
                 }
             }
         }
 
-        private static void ScrollViewer_PointerMoved(object sender, PointerRoutedEventArgs e)
+        static int i = 0;
+
+        private static void CoreWindow_PointerMoved(CoreWindow sender, PointerEventArgs args)
         {
-            if (isPressed && !isMoved)
+#if(DEBUG)
+            Debug.WriteLine(i++);
+#endif
+
+            if (_isPressed && !_isMoved)
             {
-                PointerPoint pointerPoint = e.GetCurrentPoint(scrollViewer);
+                PointerPoint pointerPoint = args.CurrentPoint;
 
                 if (pointerPoint.Properties.IsMiddleButtonPressed)
                 {
-                    currentPosition = pointerPoint.Position;
-                    var offsetX = currentPosition.Value.X - startPosition.Value.X;
-                    var offsetY = currentPosition.Value.Y - startPosition.Value.Y;
+                    _currentPosition = Window.Current.CoreWindow.PointerPosition;
+                    Debug.WriteLine("currentPosition - " + _currentPosition);
+
+                    var offsetX = _currentPosition.Value.X - _startPosition.Value.X;
+                    var offsetY = _currentPosition.Value.Y - _startPosition.Value.Y;
 
                     if (Math.Abs(offsetX) > 75.0 || Math.Abs(offsetY) > 75.0)
                     {
-                        isMoved = true;
+                        _isMoved = true;
                     }
                 }
             }
 
-            if(CanScroll())
+            if (CanScroll())
             {
-                PointerPoint pointerPoint = e.GetCurrentPoint(scrollViewer);
-
-                currentPosition = pointerPoint.Position;
+                _currentPosition = Window.Current.CoreWindow.PointerPosition;
             }
         }
 
-        private static void ScrollViewer_PointerReleased(object sender, PointerRoutedEventArgs e)
+        private static void CoreWindow_PointerReleased(CoreWindow sender, PointerEventArgs args)
         {
-            if (isPressed && !isMoved)
+            if (_isPressed && !_isMoved)
             {
-                isDeferredMovingStarted = true;
+                _isDeferredMovingStarted = true;
             }
             else
             {
-                isDeferredMovingStarted = false;
+                _isDeferredMovingStarted = false;
             }
 
-            Debug.WriteLine("isDeferredMovingStarted - " + isDeferredMovingStarted);
-
-            if (isPressed && !isDeferredMovingStarted)
+            if (_isPressed && !_isDeferredMovingStarted)
             {
                 UnsubscribeMiddleClickScrolling();
             }
@@ -226,7 +229,7 @@ namespace MiddleClickScrollingHelper
                     cursorID = 106;
                 }
 
-                if (offsetX < -75.0 && offsetY < -75.0)
+                if (offsetX < -75.0 && offsetY > 75.0)
                 {
                     cursorID = 107;
                 }
@@ -242,10 +245,14 @@ namespace MiddleClickScrollingHelper
                 }
             }
 
-            await Windows.ApplicationModel.Core.CoreApplication.MainView.CoreWindow.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+            if (_oldCursorID != cursorID)
             {
-                Window.Current.CoreWindow.PointerCursor = new CoreCursor(CoreCursorType.Custom, cursorID);
-            });
+                _oldCursorID = cursorID;
+                await Windows.ApplicationModel.Core.CoreApplication.MainView.CoreWindow.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+                {
+                    Window.Current.CoreWindow.PointerCursor = new CoreCursor(CoreCursorType.Custom, cursorID);
+                });
+            }
         }
     }
 }
