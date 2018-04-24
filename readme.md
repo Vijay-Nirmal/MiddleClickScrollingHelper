@@ -1,6 +1,6 @@
 # MiddleClickScrolling
 
-MiddleClickScrolling allows you to scroll by click middle mouse button (scroll wheel button) and move the pointer of the direction to be scrolled. This extention mrthod can used directly in `ScrollViewer` or ancestor of `ScrollViewer`.
+MiddleClickScrolling allows you to scroll by click middle mouse button (scroll wheel button) and move the pointer of the direction to be scrolled. This extension method can be used directly in `ScrollViewer` or ancestor of `ScrollViewer`.
 
 ## Syntax
 
@@ -12,7 +12,7 @@ MiddleClickScrolling allows you to scroll by click middle mouse button (scroll w
 
 <!-- Setting MiddleClickScrolling fot the ancestor of ScrollViewer -->
 <ListView extensions:ScrollViewerExtensions.EnableMiddleClickScrolling="True">
-    <!-- ListView Content -->
+    <!-- ListView Item -->
 </ListView>
 ```
 
