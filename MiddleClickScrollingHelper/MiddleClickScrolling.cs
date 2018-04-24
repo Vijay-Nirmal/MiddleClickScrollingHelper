@@ -23,6 +23,7 @@ namespace MiddleClickScrollingHelper
         private static Timer _timer;
         private static ScrollViewer _scrollViewer;
         private static uint _oldCursorID = 100;
+        private static uint _maxSpeed = 100;
 
         /// <summary>
         /// Attached <see cref="DependencyProperty"/> for enabling middle click scrolling
@@ -164,8 +165,8 @@ namespace MiddleClickScrollingHelper
                 offsetX = offsetX > 0 ? Math.Pow(offsetX, 2) : -Math.Pow(offsetX, 2);
                 offsetY = offsetY > 0 ? Math.Pow(offsetY, 2) : -Math.Pow(offsetY, 2);
 
-                offsetX = offsetX > 100 ? 100 : offsetX;
-                offsetY = offsetY > 100 ? 100 : offsetY;
+                offsetX = offsetX > _maxSpeed ? _maxSpeed : offsetX;
+                offsetY = offsetY > _maxSpeed ? _maxSpeed : offsetY;
 
                 RunInUIThread(() =>
                 {
