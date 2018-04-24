@@ -63,15 +63,20 @@ namespace MiddleClickScrollingHelper
             }
             else
             {
-                (d as FrameworkElement).Loaded += (sender, arg) =>
-                {
-                    _scrollViewer = (sender as FrameworkElement).FindDescendant<ScrollViewer>();
+                _scrollViewer = (d as FrameworkElement).FindDescendant<ScrollViewer>();
 
-                    if (_scrollViewer != null)
+                if (_scrollViewer == null)
+                {
+                    (d as FrameworkElement).Loaded += (sender, arg) =>
                     {
-                        UpdateChange((bool)e.NewValue);
-                    }
-                };
+                        _scrollViewer = (sender as FrameworkElement).FindDescendant<ScrollViewer>();
+
+                        if (_scrollViewer != null)
+                        {
+                            UpdateChange((bool)e.NewValue);
+                        }
+                    };
+                }
             }
 
             if (_scrollViewer == null)
