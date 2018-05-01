@@ -24,6 +24,7 @@ namespace MiddleClickScrollingHelper
         private static ScrollViewer _scrollViewer;
         private static uint _oldCursorID = 100;
         private static uint _maxSpeed = 100;
+        private static bool _isCursorAvailable = false;
 
         /// <summary>
         /// Attached <see cref="DependencyProperty"/> for enabling middle click scrolling
@@ -117,6 +118,7 @@ namespace MiddleClickScrollingHelper
             _isDeferredMovingStarted = false;
             _currentPosition = default(Point);
             _timer = new Timer(Scroll, null, 5, 5);
+            _isCursorAvailable = IsCursorResourceAvailable();
 
             Window.Current.CoreWindow.PointerMoved -= CoreWindow_PointerMoved;
             Window.Current.CoreWindow.PointerReleased -= CoreWindow_PointerReleased;
@@ -279,6 +281,11 @@ namespace MiddleClickScrollingHelper
         /// <param name="offsetY">Vertical offset from starting position</param>
         private static void SetCursorType(double offsetX, double offsetY)
         {
+            if (!_isCursorAvailable)
+            {
+                return;
+            }
+
             uint cursorID  =  101;
 
             if (Math.Abs(offsetX) < _threshold && Math.Abs(offsetY) < _threshold)
@@ -330,13 +337,45 @@ namespace MiddleClickScrollingHelper
 
             if (_oldCursorID != cursorID)
             {
-                _oldCursorID = cursorID;
-
                 RunInUIThread(() =>
                 {
                     Window.Current.CoreWindow.PointerCursor = new CoreCursor(CoreCursorType.Custom, cursorID);
                 });
+
+                _oldCursorID = cursorID;
             }
+        }
+
+        /// <summary>
+        /// Function to check the availability of cursor resource
+        /// </summary>
+        /// <returns>Returns `true` if the cursor resource is available</returns>
+        private static bool IsCursorResourceAvailable()
+        {
+            var isCursorAvailable = true;
+
+            try
+            {
+                Window.Current.CoreWindow.PointerCursor = new CoreCursor(CoreCursorType.Custom, 101);
+                Window.Current.CoreWindow.PointerCursor = new CoreCursor(CoreCursorType.Custom, 102);
+                Window.Current.CoreWindow.PointerCursor = new CoreCursor(CoreCursorType.Custom, 103);
+                Window.Current.CoreWindow.PointerCursor = new CoreCursor(CoreCursorType.Custom, 104);
+                Window.Current.CoreWindow.PointerCursor = new CoreCursor(CoreCursorType.Custom, 105);
+                Window.Current.CoreWindow.PointerCursor = new CoreCursor(CoreCursorType.Custom, 106);
+                Window.Current.CoreWindow.PointerCursor = new CoreCursor(CoreCursorType.Custom, 107);
+                Window.Current.CoreWindow.PointerCursor = new CoreCursor(CoreCursorType.Custom, 108);
+                Window.Current.CoreWindow.PointerCursor = new CoreCursor(CoreCursorType.Custom, 109);
+            }
+            catch (Exception)
+            {
+                isCursorAvailable = false;
+            }
+            finally
+            {
+                Window.Current.CoreWindow.PointerCursor = new CoreCursor(CoreCursorType.Arrow, 0);
+            }
+
+            return isCursorAvailable;
         }
 
         /// <summary>
